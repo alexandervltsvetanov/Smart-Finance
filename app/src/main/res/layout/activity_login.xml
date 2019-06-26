@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/colorDark"
+    tools:context="com.vladimircvetanov.smartfinance.LoginActivity"
+    android:weightSum="1">
+
+    <ImageView
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:layout_gravity="center"
+        android:layout_margin="10dp"
+        android:src="@drawable/smartfinance_icon" />
+
+    <ImageView
+        android:layout_width="231dp"
+        android:layout_height="wrap_content"
+        android:src="@drawable/smartfinance"
+        android:layout_gravity="center"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_gravity="center"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp">
+
+        <ImageView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:src="@android:drawable/ic_dialog_email"
+            android:gravity="center"
+            android:layout_marginLeft="10dp"/>
+
+        <EditText
+            android:id="@+id/loggin_email_insert"
+            android:layout_width="0dp"
+            android:layout_weight="6"
+            android:layout_height="wrap_content"
+            android:hint="@string/email_hint"
+            android:maxLength="40"
+            android:inputType="textWebEmailAddress"
+            android:maxLines="1"
+            android:textColor="@color/colorWhite"
+            android:textColorHint="@color/colorWhite"
+            android:textSize="@dimen/all_text_size_standard"
+
+            android:layout_marginLeft="10dp" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_gravity="center"
+        android:layout_marginTop="10dp"
+        android:layout_marginLeft="15dp"
+        android:layout_marginRight="10dp">
+
+        <ImageView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:src="@mipmap/mylock"
+            android:layout_gravity="center" />
+
+        <EditText
+            android:id="@+id/loggin_pass_insert"
+            android:layout_width="0dp"
+            android:layout_weight="6"
+            android:layout_height="wrap_content"
+            android:hint="@string/password_hint"
+            android:maxLength="20"
+            android:maxLines="1"
+            android:inputType="textPassword"
+            android:textColor="@color/colorWhite"
+            android:textColorHint="@color/colorWhite"
+            android:textSize="@dimen/all_text_size_standard"
+            android:layout_marginTop="6dp"
+            android:layout_marginLeft="10dp"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="20dp"
+        android:layout_gravity="center">
+
+        <Button
+            android:id="@+id/loggin_loggin_button"
+            android:layout_marginTop="10dp"
+            android:layout_width="187dp"
+            android:layout_height="wrap_content"
+            android:text="@string/login_btn"
+            android:background="@drawable/balance_button"
+            android:textSize="20sp"
+            android:textColor="@color/colorWhite"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textSize="20sp"
+            android:text="@string/or_textview"
+            android:layout_gravity="center"
+            android:textColor="@color/colorWhite"/>
+
+        <Button
+            android:id="@+id/loggin_signup_button"
+            android:layout_width="187dp"
+            android:layout_height="wrap_content"
+            android:text="@string/sign_up_btn"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/balance_button"
+            android:textSize="20sp"
+            android:textColor="@color/colorWhite"/>
+
+    </LinearLayout>
+
+</LinearLayout>

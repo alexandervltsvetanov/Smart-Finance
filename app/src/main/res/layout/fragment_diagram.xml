@@ -1,0 +1,82 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/diagram_fragment"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="com.vladimircvetanov.smartfinance.DiagramFragment">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerHorizontal="true">
+
+        <com.github.mikephil.charting.charts.PieChart
+            android:id="@+id/pie_chart"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerHorizontal="true"
+            android:layout_marginLeft="50dp"
+            android:layout_marginRight="50dp" />
+
+        <com.szugyi.circlemenu.view.CircleLayout
+            android:id="@+id/frame"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_centerHorizontal="true"
+            app:radius="180dp" />
+
+    </RelativeLayout>
+
+    <LinearLayout
+        android:id="@+id/report_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="@color/colorLightGreen"
+        android:orientation="vertical"
+        android:translationY="400dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <ImageView
+                android:id="@+id/animation_list_left"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:padding="@dimen/all_view_spacing_standard"
+                android:src="@drawable/navigation_menu" />
+
+            <Button
+                android:id="@+id/total_sum_btn"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/appbar_height"
+                android:layout_gravity="center"
+                android:layout_weight="3"
+                android:background="@drawable/balance_button"
+                android:text="@string/total_value_btn"
+                android:textColor="@color/colorWhite"
+                android:textSize="@dimen/all_text_size_standard" />
+
+            <ImageView
+                android:id="@+id/animation_list_right"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:padding="@dimen/all_view_spacing_standard"
+                android:src="@drawable/navigation_menu" />
+
+        </LinearLayout>
+
+        <fragment
+            android:id="@+id/report_fragment"
+            android:name="com.vladimircvetanov.smartfinance.reports.ReportFragment"
+            android:layout_width="match_parent"
+            android:layout_height="400dp" />
+
+    </LinearLayout>
+
+</RelativeLayout>

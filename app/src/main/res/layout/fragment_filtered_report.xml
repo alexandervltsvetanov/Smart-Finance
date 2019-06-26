@@ -1,0 +1,66 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="com.vladimircvetanov.smartfinance.reports.FilteredReportFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/filtered_report_filters_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/all_view_spacing_small"
+            android:layout_weight="1"
+            android:background="@color/colorLightGreen"
+            android:text="@string/select_accounts" />
+
+        <Spinner
+            android:id="@+id/filtered_report_sort_spinner"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_margin="@dimen/all_view_spacing_small"
+            android:layout_weight="1"
+            android:background="@color/colorLightGreen"
+            android:hint="@string/sortby"
+            android:textAlignment="center" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_margin="@dimen/all_view_spacing_small"
+        android:orientation="horizontal">
+
+        <TextView
+            android:textColor="@color/colorAccent"
+            android:id="@+id/filtered_report_date_start"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/start_date" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="  -  " />
+
+        <TextView
+            android:textColor="@color/colorAccent"
+            android:id="@+id/filtered_report_date_end"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/end_date" />
+    </LinearLayout>
+
+
+    <ExpandableListView
+        android:id="@+id/filtered_report_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+</LinearLayout>
