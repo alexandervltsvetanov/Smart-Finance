@@ -3,10 +3,11 @@ package com.vladimircvetanov.smartfinance.date;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.v4.app.DialogFragment;
 
 import org.joda.time.DateTime;
+
+import androidx.annotation.NonNull;
+import androidx.fragment.app.DialogFragment;
 
 public class DatePickerFragment extends DialogFragment {
 

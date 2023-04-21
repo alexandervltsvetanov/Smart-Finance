@@ -1,9 +1,8 @@
 package com.vladimircvetanov.smartfinance;
 
+import android.app.Activity;
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -14,7 +13,7 @@ import com.vladimircvetanov.smartfinance.model.Manager;
 import com.vladimircvetanov.smartfinance.model.User;
 
 
-public class LoginActivity extends AppCompatActivity {
+public class LoginActivity extends Activity {
 
     private EditText userEmail;
     private EditText userPass;
@@ -56,15 +55,13 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void logIn() {
-       final   String email = userEmail.getText().toString();
-       final  String pass = userPass.getText().toString();
+        final String email = userEmail.getText().toString();
+        final String pass = userPass.getText().toString();
         final User u = new User(email, pass);
         final boolean[] flag = new boolean[1];
-        new AsyncTask<Void,Void,Void>(){
 
-            @Override
-            protected Void doInBackground(Void... params) {
-                flag[0] = adapter.getUser(email, pass);
+        new Thread(() -> {
+            flag[0] = adapter.getUser(email, pass);
                 if(flag[0]){
 
                     Manager.setLoggedUser(u);
@@ -77,12 +74,7 @@ public class LoginActivity extends AppCompatActivity {
                     adapter.loadFavouriteCategories();
 
                 }
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
-
+            runOnUiThread(()->{
                 if(flag[0]){
                     finish();
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
@@ -92,7 +84,7 @@ public class LoginActivity extends AppCompatActivity {
                 } else{
                     Message.message(LoginActivity.this,"Wrong email or password.");
                 }
-            }
-        }.execute();
+            });
+        }).start();
     }
 }

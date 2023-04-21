@@ -1,12 +1,12 @@
 package com.vladimircvetanov.smartfinance.model;
 
-import android.support.annotation.Nullable;
-
 import org.joda.time.DateTime;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Comparator;
+
+import androidx.annotation.Nullable;
 
 /**
  * Class representing a single entry in an account or an expense category.
@@ -24,7 +24,9 @@ public class Transaction implements Serializable {
     private Account account;
     private Category category;
 
-    public Transaction(DateTime date, double sum, String note, Account account, Category category) {
+    private String location;
+
+    public Transaction(DateTime date, double sum, String note, String location, Account account, Category category) {
 
         this.date = date;
         this.sum = sum;
@@ -32,6 +34,7 @@ public class Transaction implements Serializable {
 
         this.account = account;
         this.category = category;
+        this.location = location;
 
         account.addTransaction(this);
     }
@@ -43,6 +46,8 @@ public class Transaction implements Serializable {
     public double getSum() {
         return sum;
     }
+
+    public String getLocation() { return location; }
 
     public String getNote() {
         return note;

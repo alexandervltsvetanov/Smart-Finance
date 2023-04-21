@@ -2,24 +2,29 @@ package com.vladimircvetanov.smartfinance.favourites;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.vladimircvetanov.smartfinance.IFragment;
 import com.vladimircvetanov.smartfinance.R;
 import com.vladimircvetanov.smartfinance.accounts.RecyclerItemClickListener;
 import com.vladimircvetanov.smartfinance.db.DBAdapter;
 import com.vladimircvetanov.smartfinance.model.CategoryExpense;
 import com.vladimircvetanov.smartfinance.model.Manager;
 import com.vladimircvetanov.smartfinance.model.RowDisplayable;
+import com.vladimircvetanov.smartfinance.transactionRelated.ItemType;
 
 import java.util.ArrayList;
+import java.util.Collection;
 
-public class FavouritesFragment extends Fragment {
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+public class FavouritesFragment extends Fragment implements IFragment {
 
     private RecyclerView favouritesList;
     private RecyclerView additionalIconsList;
@@ -31,6 +36,7 @@ public class FavouritesFragment extends Fragment {
     private DBAdapter adapter;
 
     private RowDisplayableAdapter rowDisplayableAdapter;
+    private RowDisplayableAdapter allCategoriesRowDisplayableAdapter;
     private IconsAdapter iconsAdapter;
     private Context context;
 
@@ -56,13 +62,12 @@ public class FavouritesFragment extends Fragment {
         allCategoriesList = (RecyclerView) root.findViewById(R.id.all_categories_list);
         final ArrayList<RowDisplayable> allCategories = new ArrayList<>();
         allCategories.addAll(adapter.getCachedExpenseCategories().values());
-        RowDisplayableAdapter ad = new RowDisplayableAdapter(allCategories, getActivity());
-        allCategoriesList.setAdapter(ad);
+        allCategoriesRowDisplayableAdapter = new RowDisplayableAdapter(allCategories, getActivity());
+        allCategoriesList.setAdapter(allCategoriesRowDisplayableAdapter);
         allCategoriesList.setLayoutManager(new GridLayoutManager(getActivity(), 5));
 
         allCategoriesList.addOnItemTouchListener(
                 new RecyclerItemClickListener(context, allCategoriesList, new RecyclerItemClickListener.OnItemClickListener() {
-
                     @Override
                     public void onItemClick(View view, int position) {
                         CategoryExpense cat = (CategoryExpense) allCategories.get(position);
@@ -74,7 +79,7 @@ public class FavouritesFragment extends Fragment {
                         arguments.putSerializable("ROW_DISPLAYABLE_TYPE", cat);
 
                         dialog.setArguments(arguments);
-                        dialog.show(getFragmentManager(), "Add to favorite dialog");
+                        dialog.show(getParentFragmentManager(), "Add to favorite dialog");
 
                     }
                 })
@@ -100,10 +105,34 @@ public class FavouritesFragment extends Fragment {
                     arguments.putString("ROW_DISPLAYABLE_TYPE", "CATEGORY");
 
                     dialog.setArguments(arguments);
-                    dialog.show(getFragmentManager(), "Add category dialog");
+                    dialog.show(getParentFragmentManager(), "Add category dialog");
                 }
 
             }));
         return root;
+    }
+
+    @Override
+    public void updateData(RowDisplayable item, ItemType type, Boolean delete) {
+
+        if(delete) {
+            allCategoriesRowDisplayableAdapter.removeCategory(item);
+            allCategoriesRowDisplayableAdapter.notifyDataSetChanged();
+            return;
+        }
+
+        Collection<CategoryExpense> testCat = adapter.getCachedFavCategories().values();
+
+        if(type == ItemType.FAVOURITECATEGORY) {
+            allCategoriesRowDisplayableAdapter.removeCategory(item);
+            allCategoriesRowDisplayableAdapter.notifyDataSetChanged();
+            rowDisplayableAdapter.addCategory(item);
+            rowDisplayableAdapter.notifyItemInserted(rowDisplayableAdapter.getItemCount());
+            rowDisplayableAdapter.getHolder().removeButton.setVisibility(View.GONE);
+            rowDisplayableAdapter.getHolder().image.setBackgroundColor(ContextCompat.getColor(context, R.color.colorWhite));
+        } else if(type == ItemType.CATEGORY) {
+            allCategoriesRowDisplayableAdapter.addCategory(item);
+            allCategoriesRowDisplayableAdapter.notifyDataSetChanged();
+        }
     }
 }

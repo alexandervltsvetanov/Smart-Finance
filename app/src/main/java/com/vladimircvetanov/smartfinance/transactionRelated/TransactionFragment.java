@@ -3,10 +3,6 @@ package com.vladimircvetanov.smartfinance.transactionRelated;
 import android.app.DatePickerDialog;
 import android.content.Context;
 import android.os.Bundle;
-import android.support.annotation.IdRes;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -36,7 +32,17 @@ import org.joda.time.format.DateTimeFormatter;
 
 import java.util.ArrayList;
 
+import androidx.annotation.IdRes;
+import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+
 public class TransactionFragment extends Fragment implements DatePickerDialog.OnDateSetListener, NoteInputFragment.NoteCommunicator {
+
+    public interface LocationCommunicator{
+        String getLocation();
+    }
 
     private static final int MAX_NUM_LENGTH = 9;
     private DBAdapter dbAdapter;
@@ -46,6 +52,8 @@ public class TransactionFragment extends Fragment implements DatePickerDialog.On
     private RadioGroup catTypeRadio;
     private Spinner accountSelection;
     private ListView categorySelection;
+
+    private LocationCommunicator communicator;
 
     private Category.Type selectedType;
     private Account selectedAccount;
@@ -103,6 +111,17 @@ public class TransactionFragment extends Fragment implements DatePickerDialog.On
 
     //=======CALCULATOR==============//
 
+
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        try{
+            communicator = (LocationCommunicator) getActivity();
+        } catch (ClassCastException e) {
+            throw new ClassCastException("Activities containing a NoteInputFragment MUST implement the NoteCommunicator interface!!!");
+        }
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         rootView = inflater.inflate(R.layout.fragment_transaction, container, false);
@@ -151,7 +170,7 @@ public class TransactionFragment extends Fragment implements DatePickerDialog.On
             @Override
             public void onClick(View v) {
                 DatePickerFragment datePicker = DatePickerFragment.newInstance(TransactionFragment.this, date);
-                datePicker.show(getFragmentManager(), getString(R.string.calendar_fragment_tag));
+                datePicker.show(getParentFragmentManager(), getString(R.string.calendar_fragment_tag));
             }
         });
 
@@ -193,7 +212,7 @@ public class TransactionFragment extends Fragment implements DatePickerDialog.On
                     b.putString(getString(R.string.EXTRA_NOTE), note);
                     inputFragment.setArguments(b);
                 }
-                inputFragment.show(getFragmentManager(), getString(R.string.note_fragment_tag));
+                inputFragment.show(getParentFragmentManager(), getString(R.string.note_fragment_tag));
             }
         });
 
@@ -383,15 +402,16 @@ public class TransactionFragment extends Fragment implements DatePickerDialog.On
 
         Account account = (Account) accountSelection.getSelectedItem();
         Category category = selectedCategory;
+        String location = communicator.getLocation();
 
-        Transaction transaction = new Transaction(date, sum, note, account, category);
+        Transaction transaction = new Transaction(date, sum, note, location, account, category);
         dbAdapter.addTransaction(transaction, Manager.getLoggedUser().getId());
 
         DiagramFragment fragment = new DiagramFragment();
         Bundle arguments = new Bundle();
         arguments.putSerializable("TRANSACTION", transaction);
         fragment.setArguments(arguments);
-        getFragmentManager().beginTransaction()
+        getParentFragmentManager().beginTransaction()
                 .replace(R.id.main_fragment_frame, fragment, getString(R.string.diagram_fragment_tag))
                 .addToBackStack(getString(R.string.diagram_fragment_tag))
                 .commit();

@@ -1,12 +1,16 @@
 package com.vladimircvetanov.smartfinance.db;
 
+import android.annotation.SuppressLint;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -29,6 +33,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Created by vladimircvetanov on 04.04.17.
@@ -41,14 +47,17 @@ public class DBAdapter {
      * Declaration of fields of the adapter class. A reference to innerclass will executes queries.
      */
     static DbHelper helper ;
-
-
     private static ConcurrentHashMap<String, User> registeredUsers;
     private static ConcurrentHashMap<Long, Account> accounts;
     private static ConcurrentHashMap<Long, CategoryExpense> expenseCategories;
     private static ConcurrentHashMap<Long, CategoryIncome> incomeCategories;
     private static ConcurrentHashMap<Long, CategoryExpense> favouriteCategories;
     private static ConcurrentHashMap<Long, LinkedList<Transaction>> transactions;
+
+    private static ExecutorService executor;
+    private static Handler handler;
+
+
     /**
      * Static reference to the instance of the adapter.Private static because helps to create only one instance of type DbAdapter.
      */
@@ -60,11 +69,10 @@ public class DBAdapter {
      * @param context
      */
     private DBAdapter(Context context){
-
         helper = new DbHelper(context);
         this.context = context;
-
-
+        executor = Executors.newSingleThreadExecutor();
+        handler = new Handler(Looper.getMainLooper());
     }
 
     /**
@@ -126,54 +134,41 @@ public class DBAdapter {
         final long[] id = new long[1];
         final boolean[] flag = new boolean[1];
 
-        new AsyncTask<Long,Void,Void>() {
+        executor.execute(() -> {
+            if (!flag[0]) {
+                /**
+                 *  A reference from inner class is used to create a Database object.
+                 */
+                SQLiteDatabase db = helper.getWritableDatabase();
 
-            @Override
-            protected Void doInBackground(Long... params) {
+                /**
+                 * An instance of ContentValues class is created. To insert data the reference takes a key and a value.
+                 * We specify the key as the column name. The value is the data we want ot put inside.
+                 */
+                ContentValues values = new ContentValues();
 
-                if (!flag[0]) {
+                /**
+                 * Three columns are inserted;
+                 */
 
-                    /**
-                     *  A reference from inner class is used to create a Database object.
-                     */
-                    SQLiteDatabase db = helper.getWritableDatabase();
+                values.put(DbHelper.COLUMN_USERNAME, u.getEmail());
+                values.put(DbHelper.COLUMN_PASSWORD, u.getPassword());
 
-                    /**
-                     * An instance of ContentValues class is created. To insert data the reference takes a key and a value.
-                     * We specify the key as the column name. The value is the data we want ot put inside.
-                     */
-                    ContentValues values = new ContentValues();
-
-                    /**
-                     * Three columns are inserted;
-                     */
-
-                    values.put(DbHelper.COLUMN_USERNAME, u.getEmail());
-                    values.put(DbHelper.COLUMN_PASSWORD, u.getPassword());
-
-                    /**
-                     * The insert method with three parameters(String TableName,String NullColumnHack,ContentValues values)
-                     * is called on the SQL object of the class.
-                     * It returns the ID of the inserted row or -1 if the operation fails.
-                     */
-                    id[0] = db.insert(DbHelper.TABLE_NAME_USERS, null, values);
-                    u.setId(id[0]);
-                    registeredUsers.put(u.getEmail(),u);
-                    Manager.setLoggedUser(u);
-
-
-                }
-
-                return null;
+                /**
+                 * The insert method with three parameters(String TableName,String NullColumnHack,ContentValues values)
+                 * is called on the SQL object of the class.
+                 * It returns the ID of the inserted row or -1 if the operation fails.
+                 */
+                id[0] = db.insert(DbHelper.TABLE_NAME_USERS, null, values);
+                u.setId(id[0]);
+                registeredUsers.put(u.getEmail(),u);
+                Manager.setLoggedUser(u);
             }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                super.onPostExecute(aVoid);
+            handler.post(() -> {
                 addDefaultCategories(u);
+            });
+        });
 
-            }
-        }.execute();
         return id[0];
     }
     private void addDefaultCategories(User u) {
@@ -259,24 +254,17 @@ public class DBAdapter {
 
     private static void loadUsers(){
 
-        new AsyncTask<Void,Void,Void>(){
-
-            @Override
-            protected Void doInBackground(Void... params) {
-                Cursor cursor = helper.getWritableDatabase().rawQuery("SELECT _id,username,password FROM Users;",null);
-                while(cursor.moveToNext()){
-                    int id = cursor.getInt(cursor.getColumnIndex("_id"));
-                    String email = cursor.getString(cursor.getColumnIndex("username"));
-                    String pass = cursor.getString(cursor.getColumnIndex("password"));
-                    User u = new User(email,pass);
-                    u.setId(id);
-                    registeredUsers.put(email,u);
-                }
-                return null;
+        executor.execute(() -> {
+            Cursor cursor = helper.getWritableDatabase().rawQuery("SELECT _id,username,password FROM Users;",null);
+            while(cursor.moveToNext()){
+                @SuppressLint("Range") int id = cursor.getInt(cursor.getColumnIndex("_id"));
+                @SuppressLint("Range") String email = cursor.getString(cursor.getColumnIndex("username"));
+                @SuppressLint("Range") String pass = cursor.getString(cursor.getColumnIndex("password"));
+                User u = new User(email,pass);
+                u.setId(id);
+                registeredUsers.put(email,u);
             }
-        }.execute();
-
-
+        });
     }
     public boolean existsUser(String username){
         return registeredUsers.containsKey(username);
@@ -284,55 +272,43 @@ public class DBAdapter {
 
     public void updateUser(String oldEmail, String oldPass, final String newEmail, final String newPass) {
 
-        new AsyncTask<String, Void, Void>() {
-            @Override
-            protected Void doInBackground(String... strings) {
-                SQLiteDatabase db = helper.getWritableDatabase();
-                String oldEmail = strings[0];
-                User u = registeredUsers.get(oldEmail);
-                //update
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
+            User u = registeredUsers.get(oldEmail);
+            //update
 
-                ContentValues values = new ContentValues();
-                values.put("username", newEmail);
-                values.put("password", newPass);
+            ContentValues values = new ContentValues();
+            values.put("username", newEmail);
+            values.put("password", newPass);
 
-                u.setEmail(newEmail);
-                u.setPassword(newPass);
-                registeredUsers.remove(oldEmail);
-                registeredUsers.put(newEmail, u);
-                db.update("Users", values, "username = ?", new String[]{oldEmail});
+            u.setEmail(newEmail);
+            u.setPassword(newPass);
+            registeredUsers.remove(oldEmail);
+            registeredUsers.put(newEmail, u);
+            db.update("Users", values, "username = ?", new String[]{oldEmail});
 
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
+            handler.post(() -> {
                 Toast.makeText(context, " user edited successfully", Toast.LENGTH_SHORT).show();
-            }
-        }.execute(oldEmail);
+            });
+        });
     }
 
 
     public void loadAccounts(){
 
-        new AsyncTask<Void,Void,Void>(){
+        executor.execute(() -> {
+            String[] fk = {Manager.getLoggedUser().getId()+""};
+            Cursor cursor = helper.getWritableDatabase().rawQuery("SELECT _id,account_name,account_icon,account_user FROM " + DbHelper.TABLE_NAME_ACCOUNTS + " WHERE " + DbHelper.ACCOUNTS_COLUMN_USERFK +" = ? ;",fk);
 
-            @Override
-            protected Void doInBackground(Void... params) {
-                String[] fk = {Manager.getLoggedUser().getId()+""};
-                Cursor cursor = helper.getWritableDatabase().rawQuery("SELECT _id,account_name,account_icon,account_user FROM " + DbHelper.TABLE_NAME_ACCOUNTS + " WHERE " + DbHelper.ACCOUNTS_COLUMN_USERFK +" = ? ;",fk);
-
-                while(cursor.moveToNext()){
-                    long id = cursor.getInt(cursor.getColumnIndex("_id"));
-                    String accountName = cursor.getString(cursor.getColumnIndex(DbHelper.ACCOUNTS_COLUMN_ACCOUNTNAME));
-                    int iconId = cursor.getInt(cursor.getColumnIndex(DbHelper.ACCOUNTS_COLUMN_ICON));
-                    Account account = new Account(accountName,iconId);
-                    account.setId(id);
-                    accounts.put(account.getId(), account);
-                }
-                return null;
+            while(cursor.moveToNext()){
+                @SuppressLint("Range") long id = cursor.getInt(cursor.getColumnIndex("_id"));
+                @SuppressLint("Range") String accountName = cursor.getString(cursor.getColumnIndex(DbHelper.ACCOUNTS_COLUMN_ACCOUNTNAME));
+                @SuppressLint("Range") int iconId = cursor.getInt(cursor.getColumnIndex(DbHelper.ACCOUNTS_COLUMN_ICON));
+                Account account = new Account(accountName,iconId);
+                account.setId(id);
+                accounts.put(account.getId(), account);
             }
-        }.execute();
+        });
     }
     public boolean existsAccount(Account account){
         return accounts.containsKey(account.getName());
@@ -341,26 +317,22 @@ public class DBAdapter {
     public long addAccount(final Account account,final long userId){
         final long[] id = new long[1];
 
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                if(!accounts.containsKey(account.getName())) {
-                    SQLiteDatabase db = helper.getWritableDatabase();
+        executor.execute(() -> {
+            if(!accounts.containsKey(account.getName())) {
+                SQLiteDatabase db = helper.getWritableDatabase();
 
-                    ContentValues values = new ContentValues();
+                ContentValues values = new ContentValues();
 
-                    values.put(DbHelper.ACCOUNTS_COLUMN_ACCOUNTNAME,account.getName());
-                    values.put(DbHelper.ACCOUNTS_COLUMN_ICON,account.getIconId());
-                    values.put(DbHelper.ACCOUNTS_COLUMN_USERFK,userId);
+                values.put(DbHelper.ACCOUNTS_COLUMN_ACCOUNTNAME,account.getName());
+                values.put(DbHelper.ACCOUNTS_COLUMN_ICON,account.getIconId());
+                values.put(DbHelper.ACCOUNTS_COLUMN_USERFK,userId);
 
-                    id[0] = db.insert(DbHelper.TABLE_NAME_ACCOUNTS,null,values);
-                    account.setId(id[0]);
-                    account.setUserFk(userId);
-                    accounts.put(account.getId(),account);
-                }
-                return null;
+                id[0] = db.insert(DbHelper.TABLE_NAME_ACCOUNTS,null,values);
+                account.setId(id[0]);
+                account.setUserFk(userId);
+                accounts.put(account.getId(),account);
             }
-        }.execute();
+        });
 
         return id[0];
     }
@@ -369,190 +341,150 @@ public class DBAdapter {
 
         final int[] count = new int[1];
 
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                SQLiteDatabase db = helper.getWritableDatabase();
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
 
-                for (Transaction t: ((Account)account).getTransactions()){
-                    deleteTransaction(t);
-                }
-
-                count[0] = db.delete(DbHelper.TABLE_NAME_ACCOUNTS,DbHelper.ACCOUNTS_COLUMN_ACCOUNTNAME + " = ? AND " + DbHelper.ACCOUNTS_COLUMN_USERFK + " = ?",new String[]{account.getName(), Manager.getLoggedUser().getId()+""});
-                accounts.remove(account.getId());
-                return null;
+            for (Transaction t: ((Account)account).getTransactions()){
+                deleteTransaction(t);
             }
 
-            @Override
-            protected void onPostExecute(Void integer) {
+            count[0] = db.delete(DbHelper.TABLE_NAME_ACCOUNTS,DbHelper.ACCOUNTS_COLUMN_ACCOUNTNAME + " = ? AND " + DbHelper.ACCOUNTS_COLUMN_USERFK + " = ?",new String[]{account.getName(), Manager.getLoggedUser().getId()+""});
+            accounts.remove(account.getId());
+            handler.post(() -> {
                 Message.message(context,"Account deleted!");
-            }
-        }.execute();
+            });
+        });
+
         return count[0];
     }
     public void editAccount(String oldName,int oldIconId , final String newName, final int newIconId) {
 
-        new AsyncTask<String, Void, Void>() {
-            @Override
-            protected Void doInBackground(String... strings) {
-                SQLiteDatabase db = helper.getWritableDatabase();
-                String oldName = strings[0];
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
 
-                Account a = accounts.get(oldName);
+            Account a = accounts.get(oldName);
 
-                ContentValues values = new ContentValues();
-                values.put("name", newName);
-                values.put("iconId", newIconId);
+            ContentValues values = new ContentValues();
+            values.put("name", newName);
+            values.put("iconId", newIconId);
 
-                a.setName(newName);
-                a.setIconId(newIconId);
-                accounts.remove(oldName);
-                accounts.put(a.getId(), a);
-                db.update("Accounts", values, "account_name = ?", new String[]{oldName});
-
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
+            a.setName(newName);
+            a.setIconId(newIconId);
+            accounts.remove(oldName);
+            accounts.put(a.getId(), a);
+            db.update("Accounts", values, "account_name = ?", new String[]{oldName});
+            handler.post(() -> {
                 Toast.makeText(context, " account edited successfully", Toast.LENGTH_SHORT).show();
-            }
-        }.execute(oldName);
-
+            });
+        });
     }
     public void loadExpenseCategories(){
 
-        new AsyncTask<Void,Void,Void>(){
+        executor.execute(() -> {
+            String[] fk = {String.valueOf(Manager.getLoggedUser().getId())};
+            Cursor cursor = helper.getWritableDatabase().rawQuery("SELECT _id,expense_category_name,expense_category_icon,expense_category_user FROM " + DbHelper.TABLE_NAME_EXPENSE_CATEGORIES + " WHERE " + DbHelper.EXPENSE_CATEGORIES_COLUMN_USERFK +" = ? ;",fk);
 
-            @Override
-            protected Void doInBackground(Void... params) {
-                String[] fk = {String.valueOf(Manager.getLoggedUser().getId())};
-                Cursor cursor = helper.getWritableDatabase().rawQuery("SELECT _id,expense_category_name,expense_category_icon,expense_category_user FROM " + DbHelper.TABLE_NAME_EXPENSE_CATEGORIES + " WHERE " + DbHelper.EXPENSE_CATEGORIES_COLUMN_USERFK +" = ? ;",fk);
-
-                while(cursor.moveToNext()){
-                    long id = cursor.getInt(cursor.getColumnIndex("_id"));
-                    String categoryName = cursor.getString(cursor.getColumnIndex(DbHelper.EXPENSE_CATEGORIES_COLUMN_CATEGORYNAME));
-                    int iconId = cursor.getInt(cursor.getColumnIndex(DbHelper.EXPENSE_CATEGORIES_COLUMN_ICON));
-                    CategoryExpense category = new CategoryExpense(categoryName, false, iconId);
-                    category.setId(id);
-                    expenseCategories.put(category.getId(), category);
-                }
-                return null;
+            while(cursor.moveToNext()){
+                @SuppressLint("Range") long id = cursor.getInt(cursor.getColumnIndex("_id"));
+                @SuppressLint("Range") String categoryName = cursor.getString(cursor.getColumnIndex(DbHelper.EXPENSE_CATEGORIES_COLUMN_CATEGORYNAME));
+                @SuppressLint("Range") int iconId = cursor.getInt(cursor.getColumnIndex(DbHelper.EXPENSE_CATEGORIES_COLUMN_ICON));
+                CategoryExpense category = new CategoryExpense(categoryName, false, iconId);
+                category.setId(id);
+                expenseCategories.put(category.getId(), category);
             }
-        }.execute();
-
-
+        });
     }
     public boolean existsExpenseCat(CategoryExpense category){
-        return expenseCategories.containsKey(category.getId());
+        boolean containsCategory = false;
+        for(int i = 0; i < expenseCategories.values().size(); i++) {
+            CategoryExpense cat = expenseCategories.get(i);
+            containsCategory = cat.getName() == category.getName();
+            if(containsCategory) return true;
+        }
+        return containsCategory;
     }
 
 
     public long addExpenseCategory(final CategoryExpense category, final long userId){
         final long[] id = new long[1];
 
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                if(!expenseCategories.containsKey(category.getId())) {
-                    SQLiteDatabase db = helper.getWritableDatabase();
+        executor.execute(() -> {
+            if(!expenseCategories.containsKey(category.getId())) {
+                SQLiteDatabase db = helper.getWritableDatabase();
 
-                    ContentValues values = new ContentValues();
+                ContentValues values = new ContentValues();
 
-                    values.put(DbHelper.EXPENSE_CATEGORIES_COLUMN_CATEGORYNAME,category.getName());
-                    values.put(DbHelper.EXPENSE_CATEGORIES_COLUMN_ICON,category.getIconId());
-                    values.put(DbHelper.EXPENSE_CATEGORIES_COLUMN_USERFK,userId);
+                values.put(DbHelper.EXPENSE_CATEGORIES_COLUMN_CATEGORYNAME,category.getName());
+                values.put(DbHelper.EXPENSE_CATEGORIES_COLUMN_ICON,category.getIconId());
+                values.put(DbHelper.EXPENSE_CATEGORIES_COLUMN_USERFK,userId);
 
-                    id[0] = db.insert(DbHelper.TABLE_NAME_EXPENSE_CATEGORIES,null,values);
-                    category.setUserFk(userId);
-                    category.setId(id[0]);
-                    expenseCategories.put(category.getId(),category);
-                }
-                return null;
+                id[0] = db.insert(DbHelper.TABLE_NAME_EXPENSE_CATEGORIES,null,values);
+                category.setUserFk(userId);
+                category.setId(id[0]);
+                expenseCategories.put(category.getId(),category);
             }
-        }.execute();
+        });
 
         return id[0];
     }
     public int deleteExpenseCategory(final RowDisplayable category){
         final int[] count = new int[1];
 
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                SQLiteDatabase db = helper.getWritableDatabase();
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
 
-                count[0] = db.delete(DbHelper.TABLE_NAME_EXPENSE_CATEGORIES,DbHelper.EXPENSE_CATEGORIES_COLUMN_CATEGORYNAME + " = ? AND " + DbHelper.EXPENSE_CATEGORIES_COLUMN_USERFK + " = ?",new String[]{category.getName(), Manager.getLoggedUser().getId()+""});
-                expenseCategories.remove(category.getId());
-                return null;
-            }
+            count[0] = db.delete(DbHelper.TABLE_NAME_EXPENSE_CATEGORIES,DbHelper.EXPENSE_CATEGORIES_COLUMN_CATEGORYNAME + " = ? AND " + DbHelper.EXPENSE_CATEGORIES_COLUMN_USERFK + " = ?",new String[]{category.getName(), Manager.getLoggedUser().getId()+""});
+            expenseCategories.remove(category.getId());
 
-            @Override
-            protected void onPostExecute(Void integer) {
+            handler.post(() -> {
                 loadExpenseCategories();
                 if(transactions.containsKey(category.getId())) {
                     for (Transaction t : transactions.get(category.getId())) {
                         deleteTransaction(t);
                     }
                 }
+            });
+        });
 
-
-            }
-        }.execute();
         return count[0];
     }
-    //TODO - ADAPT TO NEW COLLECTION STRUCTURE
+
     public void editExpenseCategory(String oldName,int oldIconId , final String newName, final int newIconId) {
 
-        new AsyncTask<String, Void, Void>() {
-            @Override
-            protected Void doInBackground(String... strings) {
-                SQLiteDatabase db = helper.getWritableDatabase();
-                String oldName = strings[0];
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
 
-                CategoryExpense c = expenseCategories.get(oldName);
+            CategoryExpense c = expenseCategories.get(oldName);
 
-                ContentValues values = new ContentValues();
-                values.put("name", newName);
-                values.put("iconId", newIconId);
+            ContentValues values = new ContentValues();
+            values.put("name", newName);
+            values.put("iconId", newIconId);
 
-                c.setName(newName);
-                c.setIconId(newIconId);
-                expenseCategories.remove(c.getId());
-                expenseCategories.put(c.getId(), c);
-                db.update("Expense_Categories", values, "expense_category_name = ?", new String[]{oldName});
+            c.setName(newName);
+            c.setIconId(newIconId);
+            expenseCategories.remove(c.getId());
+            expenseCategories.put(c.getId(), c);
+            db.update("Expense_Categories", values, "expense_category_name = ?", new String[]{oldName});
 
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
+            handler.post(() -> {
                 Toast.makeText(context, " Category edited successfully", Toast.LENGTH_SHORT).show();
-            }
-        }.execute(oldName);
-
+            });
+        });
     }
     public void loadIncomeCategories(){
 
-        new AsyncTask<Void,Void,Void>(){
-
-            @Override
-            protected Void doInBackground(Void... params) {
-                String[] fk = {Manager.getLoggedUser().getId()+""};
-                Cursor cursor = helper.getWritableDatabase().rawQuery("SELECT _id,income_category_name,income_category_icon,income_category_user FROM " + DbHelper.TABLE_NAME_INCOME_CATEGORIES + " WHERE " + DbHelper.INCOME_CATEGORIES_COLUMN_USERFK +" = ? ;",fk);
-                while(cursor.moveToNext()){
-                    long id = cursor.getInt(cursor.getColumnIndex("_id"));
-                    String categoryName = cursor.getString(cursor.getColumnIndex(DbHelper.INCOME_CATEGORIES_COLUMN_CATEGORYNAME));
-                    int iconId = cursor.getInt(cursor.getColumnIndex(DbHelper.INCOME_CATEGORIES_COLUMN_ICON));
-                    CategoryIncome category = new CategoryIncome(categoryName,iconId);
-                    category.setId(id);
-                    incomeCategories.put(category.getId(),category);
-                }
-                return null;
+        executor.execute(() -> {
+            String[] fk = {Manager.getLoggedUser().getId()+""};
+            Cursor cursor = helper.getWritableDatabase().rawQuery("SELECT _id,income_category_name,income_category_icon,income_category_user FROM " + DbHelper.TABLE_NAME_INCOME_CATEGORIES + " WHERE " + DbHelper.INCOME_CATEGORIES_COLUMN_USERFK +" = ? ;",fk);
+            while(cursor.moveToNext()){
+                @SuppressLint("Range") long id = cursor.getInt(cursor.getColumnIndex("_id"));
+                @SuppressLint("Range") String categoryName = cursor.getString(cursor.getColumnIndex(DbHelper.INCOME_CATEGORIES_COLUMN_CATEGORYNAME));
+                @SuppressLint("Range") int iconId = cursor.getInt(cursor.getColumnIndex(DbHelper.INCOME_CATEGORIES_COLUMN_ICON));
+                CategoryIncome category = new CategoryIncome(categoryName,iconId);
+                category.setId(id);
+                incomeCategories.put(category.getId(),category);
             }
-        }.execute();
-
-
+        });
     }
     public boolean existsIncomeCat(CategoryIncome category){
         return incomeCategories.containsKey(category.getId());
@@ -561,105 +493,81 @@ public class DBAdapter {
     public long addIncomeCategory(final CategoryIncome category,final long userId){
         final long[] id = new long[1];
 
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                if(!incomeCategories.containsKey(category.getId())) {
-                    SQLiteDatabase db = helper.getWritableDatabase();
+        executor.execute(() -> {
+            if(!incomeCategories.containsKey(category.getId())) {
+                SQLiteDatabase db = helper.getWritableDatabase();
 
-                    ContentValues values = new ContentValues();
+                ContentValues values = new ContentValues();
 
-                    values.put(DbHelper.INCOME_CATEGORIES_COLUMN_CATEGORYNAME,category.getName());
-                    values.put(DbHelper.INCOME_CATEGORIES_COLUMN_ICON,category.getIconId());
-                    values.put(DbHelper.INCOME_CATEGORIES_COLUMN_USERFK,userId);
+                values.put(DbHelper.INCOME_CATEGORIES_COLUMN_CATEGORYNAME,category.getName());
+                values.put(DbHelper.INCOME_CATEGORIES_COLUMN_ICON,category.getIconId());
+                values.put(DbHelper.INCOME_CATEGORIES_COLUMN_USERFK,userId);
 
-                    id[0] = db.insert(DbHelper.TABLE_NAME_INCOME_CATEGORIES,null,values);
-                    category.setUserFk(userId);
-                    category.setId(id[0]);
-                    incomeCategories.put(category.getId(),category);
-                }
-                return null;
+                id[0] = db.insert(DbHelper.TABLE_NAME_INCOME_CATEGORIES,null,values);
+                category.setUserFk(userId);
+                category.setId(id[0]);
+                incomeCategories.put(category.getId(),category);
             }
-        }.execute();
+        });
 
         return id[0];
     }
     public int deleteIncomeCategory(final CategoryIncome category){
         final int[] count = new int[1];
 
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                SQLiteDatabase db = helper.getWritableDatabase();
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
 
-                count[0] = db.delete(DbHelper.TABLE_NAME_INCOME_CATEGORIES,DbHelper.INCOME_CATEGORIES_COLUMN_CATEGORYNAME + " = ? " ,new String[]{category.getName()});
-                incomeCategories.remove(category.getId());
-                return null;
-            }
+            count[0] = db.delete(DbHelper.TABLE_NAME_INCOME_CATEGORIES,DbHelper.INCOME_CATEGORIES_COLUMN_CATEGORYNAME + " = ? " ,new String[]{category.getName()});
+            incomeCategories.remove(category.getId());
 
-            @Override
-            protected void onPostExecute(Void integer) {
+            handler.post(() -> {
                 Message.message(context,"Category deleted!");
-            }
-        }.execute();
+            });
+        });
+
         return count[0];
     }
 
-    //TODO -
     public void editIncomeCategory(String oldName,int oldIconId , final String newName, final int newIconId) {
 
-        new AsyncTask<String, Void, Void>() {
-            @Override
-            protected Void doInBackground(String... strings) {
-                SQLiteDatabase db = helper.getWritableDatabase();
-                String oldName = strings[0];
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
 
-                CategoryIncome c = incomeCategories.get(oldName);
+            CategoryIncome c = incomeCategories.get(oldName);
 
-                ContentValues values = new ContentValues();
-                values.put("name", newName);
-                values.put("iconId", newIconId);
+            ContentValues values = new ContentValues();
+            values.put("name", newName);
+            values.put("iconId", newIconId);
 
-                c.setName(newName);
-                c.setIconId(newIconId);
-                incomeCategories.remove(c.getId());
-                incomeCategories.put(c.getId(), c);
-                db.update("Income_Categories", values, "income_category_name = ?", new String[]{oldName});
+            c.setName(newName);
+            c.setIconId(newIconId);
+            incomeCategories.remove(c.getId());
+            incomeCategories.put(c.getId(), c);
+            db.update("Income_Categories", values, "income_category_name = ?", new String[]{oldName});
 
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
+            handler.post(() -> {
                 Toast.makeText(context, " Category edited successfully", Toast.LENGTH_SHORT).show();
-            }
-        }.execute(oldName);
-
+            });
+        });
     }
     public void loadFavouriteCategories(){
 
-        new AsyncTask<Void,Void,Void>(){
+        executor.execute(() -> {
+            String[] fk = {Manager.getLoggedUser().getId()+""};
+            Cursor cursor = helper.getWritableDatabase().rawQuery("SELECT _id,fav_category_name,fav_category_icon,fav_category_user FROM " + DbHelper.TABLE_NAME_FAVCATEGORIES + " WHERE " + DbHelper.FAVCATEGORIES_COLUMN_USERFK +" = ? ;",fk);
 
-            @Override
-            protected Void doInBackground(Void... params) {
-                String[] fk = {Manager.getLoggedUser().getId()+""};
-                Cursor cursor = helper.getWritableDatabase().rawQuery("SELECT _id,fav_category_name,fav_category_icon,fav_category_user FROM " + DbHelper.TABLE_NAME_FAVCATEGORIES + " WHERE " + DbHelper.FAVCATEGORIES_COLUMN_USERFK +" = ? ;",fk);
-
-                if(favouriteCategories.isEmpty()) {
-                    while (cursor.moveToNext()) {
-                        long id = cursor.getLong(cursor.getColumnIndex("_id"));
-                        String categoryName = cursor.getString(cursor.getColumnIndex(DbHelper.FAVCATEGORIES_COLUMN_CATEGORYNAME));
-                        int iconId = cursor.getInt(cursor.getColumnIndex(DbHelper.FAVCATEGORIES_COLUMN_ICON));
-                        CategoryExpense category = new CategoryExpense(categoryName, true, iconId);
-                        category.setId(id);
-                        favouriteCategories.put(category.getId(), category);
-                    }
+            if(favouriteCategories.isEmpty()) {
+                while (cursor.moveToNext()) {
+                    @SuppressLint("Range") long id = cursor.getLong(cursor.getColumnIndex("_id"));
+                    @SuppressLint("Range") String categoryName = cursor.getString(cursor.getColumnIndex(DbHelper.FAVCATEGORIES_COLUMN_CATEGORYNAME));
+                    @SuppressLint("Range") int iconId = cursor.getInt(cursor.getColumnIndex(DbHelper.FAVCATEGORIES_COLUMN_ICON));
+                    CategoryExpense category = new CategoryExpense(categoryName, true, iconId);
+                    category.setId(id);
+                    favouriteCategories.put(category.getId(), category);
                 }
-
-                return null;
             }
-
-        }.execute();
+        });
     }
 
     public boolean existsFavCat(String categoryName){
@@ -670,81 +578,61 @@ public class DBAdapter {
     public int moveToFav(final CategoryExpense category){
         final int[] count = new int[1];
 
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                SQLiteDatabase db = helper.getWritableDatabase();
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
 
-                count[0] = db.delete(DbHelper.TABLE_NAME_EXPENSE_CATEGORIES,DbHelper.EXPENSE_CATEGORIES_COLUMN_CATEGORYNAME + " = ? AND " + DbHelper.EXPENSE_CATEGORIES_COLUMN_USERFK + " = ?",new String[]{category.getName(), Manager.getLoggedUser().getId()+""});
-                expenseCategories.remove(category.getId());
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void integer) {
+            count[0] = db.delete(DbHelper.TABLE_NAME_EXPENSE_CATEGORIES,DbHelper.EXPENSE_CATEGORIES_COLUMN_CATEGORYNAME + " = ? AND " + DbHelper.EXPENSE_CATEGORIES_COLUMN_USERFK + " = ?",new String[]{category.getName(), Manager.getLoggedUser().getId()+""});
+            expenseCategories.remove(category.getId());
+            category.setId(132);
+            handler.post(() -> {
                 addFavCategory(category,Manager.getLoggedUser().getId());
+            });
+        });
 
-            }
-        }.execute();
         return count[0];
     }
     public  long addFavCategory(final CategoryExpense category, final long userId){
         final long[] id = new long[1];
 
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                if(!favouriteCategories.containsKey(category.getId())) {
-                    SQLiteDatabase db = helper.getWritableDatabase();
+        executor.execute(() -> {
+            if(!favouriteCategories.containsKey(category.getId())) {
+                SQLiteDatabase db = helper.getWritableDatabase();
 
-                    ContentValues values = new ContentValues();
+                ContentValues values = new ContentValues();
 
-                    values.put(DbHelper.FAVCATEGORIES_COLUMN_CATEGORYNAME,category.getName());
-                    values.put(DbHelper.FAVCATEGORIES_COLUMN_ICON,category.getIconId());
-                    values.put(DbHelper.FAVCATEGORIES_COLUMN_USERFK,userId);
+                values.put(DbHelper.FAVCATEGORIES_COLUMN_CATEGORYNAME,category.getName());
+                values.put(DbHelper.FAVCATEGORIES_COLUMN_ICON,category.getIconId());
+                values.put(DbHelper.FAVCATEGORIES_COLUMN_USERFK,userId);
 
-                    id[0] = db.insert(DbHelper.TABLE_NAME_FAVCATEGORIES,null,values);
-                    category.setUserFk(userId);
-                    category.setId(id[0]);
-                    favouriteCategories.put(category.getId(),category);
-                }
-                return null;
+                id[0] = db.insert(DbHelper.TABLE_NAME_FAVCATEGORIES,null,values);
+                category.setUserFk(userId);
+                category.setId(id[0]);
+                favouriteCategories.put(category.getId(),category);
             }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                super.onPostExecute(aVoid);
-
-            }
-        }.execute();
+        });
 
         return id[0];
     }
     public int deleteFavCategory(final RowDisplayable category){
         final int[] count = new int[1];
 
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                SQLiteDatabase db = helper.getWritableDatabase();
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
 
-                count[0] = db.delete(DbHelper.TABLE_NAME_FAVCATEGORIES,DbHelper.FAVCATEGORIES_COLUMN_CATEGORYNAME + " = ? AND " + DbHelper.FAVCATEGORIES_COLUMN_USERFK+ " = ?",new String[]{category.getName(), Manager.getLoggedUser().getId()+""});
-                favouriteCategories.remove(category.getId());
-                return null;
-            }
+            count[0] = db.delete(DbHelper.TABLE_NAME_FAVCATEGORIES,DbHelper.FAVCATEGORIES_COLUMN_CATEGORYNAME + " = ? AND " + DbHelper.FAVCATEGORIES_COLUMN_USERFK+ " = ?",new String[]{category.getName(), Manager.getLoggedUser().getId()+""});
+            favouriteCategories.remove(category.getId());
 
-            @Override
-            protected void onPostExecute(Void integer) {
-               if(transactions.containsKey(category.getId())) {
-                   for (Transaction t : transactions.get(category.getId())) {
-                       deleteTransaction(t);
-                   }
-               }
+            handler.post(() -> {
+                if(transactions.containsKey(category.getId())) {
+                    for (Transaction t : transactions.get(category.getId())) {
+                        deleteTransaction(t);
+                    }
+                }
 
                 Message.message(context,"Category deleted!");
+            });
+        });
 
-            }
-        }.execute();
         return count[0];
     }
 
@@ -758,132 +646,115 @@ public class DBAdapter {
         }
         transactions.get(catId).add(transaction);
 
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... params) {
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
 
-                SQLiteDatabase db = helper.getWritableDatabase();
+            ContentValues values = new ContentValues();
 
-                ContentValues values = new ContentValues();
+            values.put(DbHelper.TRANSACTIONS_COLUMN_DATE,transaction.getDate().getMillis());
+            values.put(DbHelper.TRANSACTIONS_COLUMN_LOCATION, transaction.getLocation());
+            values.put(DbHelper.TRANSACTIONS_COLUMN_SUM,transaction.getSum());
+            values.put(DbHelper.TRANSACTIONS_COLUMN_NOTE,transaction.getNote());
+            values.put(DbHelper.TRANSACTIONS_COLUMN_ACCOUNTFK,transaction.getAccount().getId());
+            values.put(DbHelper.TRANSACTIONS_COLUMN_CATEGORYFK,transaction.getCategory().getId());
+            values.put(DbHelper.TRANSACTIONS_COLUMN_USERFK, userId);
 
-                values.put(DbHelper.TRANSACTIONS_COLUMN_DATE,transaction.getDate().getMillis());
-                values.put(DbHelper.TRANSACTIONS_COLUMN_SUM,transaction.getSum());
-                values.put(DbHelper.TRANSACTIONS_COLUMN_NOTE,transaction.getNote());
-                values.put(DbHelper.TRANSACTIONS_COLUMN_ACCOUNTFK,transaction.getAccount().getId());
-                values.put(DbHelper.TRANSACTIONS_COLUMN_CATEGORYFK,transaction.getCategory().getId());
-                values.put(DbHelper.TRANSACTIONS_COLUMN_USERFK, userId);
+            id[0] = db.insert(DbHelper.TABLE_NAME_TRANSACTIONS,null,values);
+            transaction.setId(id[0]);
 
-                id[0] = db.insert(DbHelper.TABLE_NAME_TRANSACTIONS,null,values);
-                transaction.setId(id[0]);
-
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
+            handler.post(() -> {
                 Message.message(context,"Transaction added successfully.");
                 Log.wtf("LOAD TRANSACTIONS:", " LOADED ");
-            }
-        }.execute();
+            });
+        });
 
         return id[0];
     }
 
     public void loadTransactions(){
 
-        new AsyncTask<Void,Void,Void>(){
+        executor.execute(() -> {
+            Cursor cursor = helper.getWritableDatabase().rawQuery(
+                    "SELECT " +  helper.COLUMN_ID +
+                            " , " + helper.TRANSACTIONS_COLUMN_NOTE +
+                            " , " + helper.TRANSACTIONS_COLUMN_DATE +
+                            " , " + helper.TRANSACTIONS_COLUMN_LOCATION +
+                            " , " + helper.TRANSACTIONS_COLUMN_SUM +
+                            " , " + helper.TRANSACTIONS_COLUMN_ACCOUNTFK +
+                            " , " + helper.TRANSACTIONS_COLUMN_CATEGORYFK +
+                            " , " + helper.TRANSACTIONS_COLUMN_USERFK +
+                            " FROM " + DbHelper.TABLE_NAME_TRANSACTIONS +
+                            " WHERE " + DbHelper.TRANSACTIONS_COLUMN_USERFK +" = " + Manager.getLoggedUser().getId(), null);
 
-            @Override
-            protected Void doInBackground(Void... params) {
-                Cursor cursor = helper.getWritableDatabase().rawQuery(
-                                "SELECT " +  helper.COLUMN_ID +
-                                " , " + helper.TRANSACTIONS_COLUMN_NOTE +
-                                " , " + helper.TRANSACTIONS_COLUMN_DATE +
-                                " , " + helper.TRANSACTIONS_COLUMN_SUM +
-                                " , " + helper.TRANSACTIONS_COLUMN_ACCOUNTFK +
-                                " , " + helper.TRANSACTIONS_COLUMN_CATEGORYFK +
-                                " , " + helper.TRANSACTIONS_COLUMN_USERFK +
-                                " FROM " + DbHelper.TABLE_NAME_TRANSACTIONS +
-                                " WHERE " + DbHelper.TRANSACTIONS_COLUMN_USERFK +" = " + Manager.getLoggedUser().getId(), null);
+            if(transactions.isEmpty()) {
 
-                if(transactions.isEmpty()) {
-
-                    int noteIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_NOTE);
-                    int dateIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_DATE);
-                    int sumIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_SUM);
-                    int accountIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_ACCOUNTFK);
-                    int categoryIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_CATEGORYFK);
-                    int userIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_USERFK);
-                    int idIndex = cursor.getColumnIndex(helper.COLUMN_ID);
+                int noteIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_NOTE);
+                int dateIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_DATE);
+                int locationIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_LOCATION);
+                int sumIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_SUM);
+                int accountIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_ACCOUNTFK);
+                int categoryIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_CATEGORYFK);
+                int userIndex = cursor.getColumnIndex(helper.TRANSACTIONS_COLUMN_USERFK);
+                int idIndex = cursor.getColumnIndex(helper.COLUMN_ID);
 
 
-                    while (cursor.moveToNext()) {
+                while (cursor.moveToNext()) {
 
-                        long id = cursor.getLong(idIndex);
-                        String note = cursor.getString(noteIndex);
-                        long timestamp = cursor.getLong(dateIndex);
-                        DateTime date = new DateTime(timestamp, DateTimeZone.UTC);
-                        double sum = cursor.getDouble(sumIndex);
-                        long accFk = cursor.getLong(accountIndex);
-                        long catFk = cursor.getLong(categoryIndex);
-                        long userFk = cursor.getLong(userIndex);
+                    long id = cursor.getLong(idIndex);
+                    String note = cursor.getString(noteIndex);
+                    long timestamp = cursor.getLong(dateIndex);
+                    DateTime date = new DateTime(timestamp, DateTimeZone.UTC);
+                    String location = cursor.getString(locationIndex);
+                    double sum = cursor.getDouble(sumIndex);
+                    long accFk = cursor.getLong(accountIndex);
+                    long catFk = cursor.getLong(categoryIndex);
+                    long userFk = cursor.getLong(userIndex);
 
-                        if (! (expenseCategories.containsKey(catFk) || favouriteCategories.containsKey(catFk) || incomeCategories.containsKey(catFk))){
-                            Log.wtf("LOAD TRANSACTIONS:", " NO CATEGORY FOR THIS TRANSACTION!");
-                            continue;
-                        }
-                        if (!accounts.containsKey(accFk)){
-                            Log.wtf("LOAD TRANSACTIONS:", " NO ACCOUNT FOR THIS TRANSACTION!");
-                            continue;
-                        }
-
-                        Account acc = accounts.get(accFk);
-                        Category cat = incomeCategories.get(catFk);
-                        if (cat == null) cat = expenseCategories.get(catFk);
-                        if (cat == null) cat = favouriteCategories.get(catFk);
-
-                        Transaction t = new Transaction(date, sum, note, acc, cat);
-                        t.setId(id);
-                        t.setUserFk(userFk);
-
-                        if (!transactions.containsKey(catFk)){
-                            transactions.put(catFk, new LinkedList<Transaction>());
-                        }
-
-                        transactions.get(catFk).add(t);
-                        Log.wtf("LOAD TRANSACTIONS:", " LOADED " + cat.getName() + "   :   " + transactions.get(catFk).size());
+                    if (! (expenseCategories.containsKey(catFk) || favouriteCategories.containsKey(catFk) || incomeCategories.containsKey(catFk))){
+                        Log.wtf("LOAD TRANSACTIONS:", " NO CATEGORY FOR THIS TRANSACTION!");
+                        continue;
                     }
-                }
-                else{
+                    if (!accounts.containsKey(accFk)){
+                        Log.wtf("LOAD TRANSACTIONS:", " NO ACCOUNT FOR THIS TRANSACTION!");
+                        continue;
+                    }
 
+                    Account acc = accounts.get(accFk);
+                    Category cat = incomeCategories.get(catFk);
+                    if (cat == null) cat = expenseCategories.get(catFk);
+                    if (cat == null) cat = favouriteCategories.get(catFk);
+
+                    Transaction t = new Transaction(date, sum, note, location, acc, cat);
+                    t.setId(id);
+                    t.setUserFk(userFk);
+
+                    if (!transactions.containsKey(catFk)){
+                        transactions.put(catFk, new LinkedList<Transaction>());
+                    }
+
+                    transactions.get(catFk).add(t);
+                    Log.wtf("LOAD TRANSACTIONS:", " LOADED " + cat.getName() + "   :   " + transactions.get(catFk).size());
                 }
-                return null;
             }
-
-
-        }.execute();
+        });
     }
     public int deleteTransaction(final Transaction transaction){
 
         final int[] count = new int[1];
 
-        new AsyncTask<Void,Void,Void>(){
-            @Override
-            protected Void doInBackground(Void... params) {
-                SQLiteDatabase db = helper.getWritableDatabase();
+        executor.execute(() -> {
+            SQLiteDatabase db = helper.getWritableDatabase();
 
-                count[0] = db.delete(DbHelper.TABLE_NAME_TRANSACTIONS,DbHelper.COLUMN_ID + " = ? AND " + DbHelper.TRANSACTIONS_COLUMN_USERFK + " = ?",new String[]{transaction.getId()+"", Manager.getLoggedUser().getId()+""});
-                if (count[0] >= 1){
-                    transactions.get(transaction.getCategory().getId()).remove(transaction);
-                }
-                return null;
+            count[0] = db.delete(DbHelper.TABLE_NAME_TRANSACTIONS,DbHelper.COLUMN_ID + " = ? AND " + DbHelper.TRANSACTIONS_COLUMN_USERFK + " = ?",new String[]{transaction.getId()+"", Manager.getLoggedUser().getId()+""});
+            if (count[0] >= 1){
+                transactions.get(transaction.getCategory().getId()).remove(transaction);
             }
 
-            @Override
-            protected void onPostExecute(Void integer) {
+            handler.post(() -> {
                 Message.message(context,"Transaction deleted!");
-            }
-        }.execute();
+            });
+        });
+
         return count[0];
     }
 
@@ -965,6 +836,8 @@ public class DBAdapter {
 
         private static final String TRANSACTIONS_COLUMN_NOTE = "transaction_note";
 
+        private static final String TRANSACTIONS_COLUMN_LOCATION = "transaction_location";
+
         private static final String TRANSACTIONS_COLUMN_SUM = "transaction_sum";
 
         private static final String TRANSACTIONS_COLUMN_DATE = "transaction_date";
@@ -1000,7 +873,7 @@ public class DBAdapter {
                 FAVCATEGORIES_COLUMN_ICON + " INTEGER, " + FAVCATEGORIES_COLUMN_USERFK + " INTEGER);";
 
         public static final String CREATE_TABLE_TRANASCTIONS = "CREATE TABLE " + TABLE_NAME_TRANSACTIONS + "(" + COLUMN_ID +
-                " INTEGER PRIMARY KEY AUTOINCREMENT, " + TRANSACTIONS_COLUMN_NOTE + " VARCHAR(255), " +
+                " INTEGER PRIMARY KEY AUTOINCREMENT, " + TRANSACTIONS_COLUMN_NOTE + " VARCHAR(255), " + TRANSACTIONS_COLUMN_LOCATION + " VARCHAR(255), " +
                 TRANSACTIONS_COLUMN_SUM + " REAL, " + TRANSACTIONS_COLUMN_DATE + " INTEGER, " + TRANSACTIONS_COLUMN_CATEGORYFK + " INTEGER," +
                 TRANSACTIONS_COLUMN_USERFK + " INTEGER, " + TRANSACTIONS_COLUMN_ACCOUNTFK + " INTEGER);";
 

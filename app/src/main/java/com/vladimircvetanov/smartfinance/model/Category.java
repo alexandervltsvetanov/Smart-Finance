@@ -41,7 +41,7 @@ public abstract class Category implements RowDisplayable {
     }
 
     public void setId(long id) {
-        this.id = id;
+        this.id = type == Type.EXPENSE ? id : -id;
     }
 
     public long getId() {

@@ -3,8 +3,6 @@ package com.vladimircvetanov.smartfinance.reports;
 import android.app.DatePickerDialog;
 import android.content.Context;
 import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v4.util.ArrayMap;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -28,6 +26,7 @@ import com.vladimircvetanov.smartfinance.model.Transaction;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+import org.w3c.dom.Text;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -35,6 +34,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+
+import androidx.collection.ArrayMap;
+import androidx.fragment.app.Fragment;
 
 public class FilteredReportFragment extends Fragment implements AccountSelectionDialog.Communicator, Serializable {
     private static final DateTimeFormatter LONG_DATE_FORMAT = DateTimeFormat.forPattern("d MMMM, YYYY");
@@ -83,7 +85,7 @@ public class FilteredReportFragment extends Fragment implements AccountSelection
             @Override
             public void onClick(View v) {
                 DatePickerFragment datePicker = DatePickerFragment.newInstance(startDateListener, startDate);
-                datePicker.show(getFragmentManager(), getString(R.string.calendar_fragment_tag));
+                datePicker.show(getParentFragmentManager(), getString(R.string.calendar_fragment_tag));
             }
         });
         endDateView = (TextView) rootView.findViewById(R.id.filtered_report_date_end);
@@ -92,7 +94,7 @@ public class FilteredReportFragment extends Fragment implements AccountSelection
             @Override
             public void onClick(View v) {
                 DatePickerFragment datePicker = DatePickerFragment.newInstance(endDateListener, endDate);
-                datePicker.show(getFragmentManager(), getString(R.string.calendar_fragment_tag));
+                datePicker.show(getParentFragmentManager(), getString(R.string.calendar_fragment_tag));
             }
         });
 
@@ -103,7 +105,7 @@ public class FilteredReportFragment extends Fragment implements AccountSelection
             @Override
             public void onClick(View v) {
                 AccountSelectionDialog dialog = AccountSelectionDialog.newInstance(selectedAccounts, FilteredReportFragment.this);
-                dialog.show(getFragmentManager(), "Account Selection Tag");
+                dialog.show(getParentFragmentManager(), "Account Selection Tag");
             }
         });
 
@@ -224,10 +226,12 @@ public class FilteredReportFragment extends Fragment implements AccountSelection
             ImageView icon = (ImageView) convertView.findViewById(R.id.report_item_icon);
             TextView title = (TextView) convertView.findViewById(R.id.report_item_title);
             TextView sum = (TextView) convertView.findViewById(R.id.report_item_sum);
+            TextView location = (TextView) convertView.findViewById(R.id.report_item_location);
             TextView date = (TextView) convertView.findViewById(R.id.report_item_date);
 
             icon.setImageResource(trans.getCategory().getIconId());
             title.setText(trans.getCategory().getName());
+            location.setText(trans.getLocation());
             sum.setText("$ " + trans.getSum());
             date.setText(trans.getDate().toString(SHORT_DATE_FORMAT));
 
@@ -235,7 +239,7 @@ public class FilteredReportFragment extends Fragment implements AccountSelection
                 @Override
                 public void onClick(View v) {
                     TransactionDetailsFragment fragment = TransactionDetailsFragment.newInstance(trans);
-                    fragment.show(getFragmentManager(), "TransactionDetails");
+                    fragment.show(getParentFragmentManager(), "TransactionDetails");
                 }
             });
 

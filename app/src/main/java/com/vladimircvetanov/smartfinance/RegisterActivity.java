@@ -1,18 +1,16 @@
 package com.vladimircvetanov.smartfinance;
 
 import android.content.Intent;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
 import com.vladimircvetanov.smartfinance.db.DBAdapter;
 import com.vladimircvetanov.smartfinance.message.Message;
-import com.vladimircvetanov.smartfinance.model.CategoryExpense;
-import com.vladimircvetanov.smartfinance.model.Manager;
 import com.vladimircvetanov.smartfinance.model.User;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 public class RegisterActivity extends AppCompatActivity {
 
@@ -61,7 +59,7 @@ public class RegisterActivity extends AppCompatActivity {
             userEmail.requestFocus();
             return;
         }
-        //if(!android.util.Patterns.EMAIL_ADDRESS.matcher(username).matches()){
+
         if (!username.matches("^(.+)@(.+)$")) {
             userEmail.setError("enter a valid email address");
             userEmail.setText("");
@@ -98,30 +96,16 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        flag[0] = true;
-        new AsyncTask<Void,Void,Boolean>(){
-            @Override
-            protected Boolean doInBackground(Void... params) {
-                if(flag[0] = true) {
-                    User u = new User(username, pass);
-                    long id = adapter.insertData(u);
-                }
-                return null;
+        new Thread(() -> {
+            if(flag[0] = true) {
+                User u = new User(username, pass);
+                long id = adapter.insertData(u);
             }
-
-            @Override
-            protected void onPostExecute(Boolean aBoolean) {
-                super.onPostExecute(aBoolean);
-                    Message.message(RegisterActivity.this, "User registered!");
-                    startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
-                    finish();
-
-            }
-        }.execute();
-
-
-
-
+            runOnUiThread(()->{
+                Message.message(RegisterActivity.this, "User registered!");
+                startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+                finish();
+            });
+        }).start();
     }
-
 }

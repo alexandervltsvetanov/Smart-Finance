@@ -1,8 +1,6 @@
 package com.vladimircvetanov.smartfinance.favourites;
 
 import android.os.Bundle;
-import android.support.annotation.Nullable;
-import android.support.v4.app.DialogFragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.vladimircvetanov.smartfinance.MainActivity;
 import com.vladimircvetanov.smartfinance.R;
 import com.vladimircvetanov.smartfinance.accounts.AccountsAdapter;
 import com.vladimircvetanov.smartfinance.db.DBAdapter;
@@ -19,6 +18,10 @@ import com.vladimircvetanov.smartfinance.message.Message;
 import com.vladimircvetanov.smartfinance.model.Account;
 import com.vladimircvetanov.smartfinance.model.CategoryExpense;
 import com.vladimircvetanov.smartfinance.model.Manager;
+import com.vladimircvetanov.smartfinance.transactionRelated.ItemType;
+
+import androidx.annotation.Nullable;
+import androidx.fragment.app.DialogFragment;
 
 public class AddCategoryDialogFragment extends DialogFragment {
 
@@ -27,6 +30,8 @@ public class AddCategoryDialogFragment extends DialogFragment {
     private EditText categoryName;
     private Button addCategory;
     private Button cancel;
+
+    private IUpdateData updateData;
 
     private DBAdapter adapter;
 
@@ -40,6 +45,8 @@ public class AddCategoryDialogFragment extends DialogFragment {
         categoryName = (EditText) view.findViewById(R.id.add_category_name);
         cancel = (Button) view.findViewById(R.id.cancel_addition);
         addCategory = (Button) view.findViewById(R.id.start_addition);
+
+        updateData = (MainActivity) getActivity();
 
         adapter = DBAdapter.getInstance(getActivity());
         Bundle b = getArguments();
@@ -88,6 +95,7 @@ public class AddCategoryDialogFragment extends DialogFragment {
                             CategoryExpense cat = new CategoryExpense(nameStr, false, finalIconId);
                             if(!adapter.getCachedExpenseCategories().containsValue(cat) && !adapter.getCachedFavCategories().containsValue(cat)) {
                                 adapter.addExpenseCategory(cat, Manager.getLoggedUser().getId());
+                                updateData.sendData(cat, ItemType.CATEGORY, false);
                                 Toast.makeText(getActivity(), "Category created!", Toast.LENGTH_SHORT).show();
                             }else{
                                 Message.message(getActivity(),"This category already exists,please choose another name!");
@@ -97,6 +105,7 @@ public class AddCategoryDialogFragment extends DialogFragment {
                             Account ac = new Account(nameStr, finalIconId);
                             if(!adapter.getCachedAccounts().containsValue(ac)) {
                                 adapter.addAccount(ac, Manager.getLoggedUser().getId());
+                                updateData.sendData(ac, ItemType.ACCOUNT, false);
                                 Toast.makeText(getActivity(), "Account created!", Toast.LENGTH_SHORT).show();
                             }else{
                                 Message.message(getActivity(),"This account already exists,please choose another name!");

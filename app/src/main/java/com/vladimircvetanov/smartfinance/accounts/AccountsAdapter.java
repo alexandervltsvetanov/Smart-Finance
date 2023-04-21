@@ -2,9 +2,6 @@ package com.vladimircvetanov.smartfinance.accounts;
 
 import android.content.Context;
 import android.content.DialogInterface;
-import android.support.v4.app.FragmentManager;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,6 +19,10 @@ import com.vladimircvetanov.smartfinance.reports.FilteredReportFragment;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.fragment.app.FragmentManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 public class AccountsAdapter extends RecyclerView.Adapter<AccountsAdapter.AccountViewHolder>{
 
@@ -90,6 +91,10 @@ public class AccountsAdapter extends RecyclerView.Adapter<AccountsAdapter.Accoun
                         .commit();
             }
         });
+    }
+
+    public void addAccount(RowDisplayable account) {
+        accounts.add(account);
     }
 
     @Override

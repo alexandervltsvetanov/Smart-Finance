@@ -1,7 +1,6 @@
 package com.vladimircvetanov.smartfinance.reports;
 
 import android.os.Bundle;
-import android.support.v4.app.DialogFragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +11,8 @@ import android.widget.TextView;
 import com.vladimircvetanov.smartfinance.R;
 import com.vladimircvetanov.smartfinance.model.Category;
 import com.vladimircvetanov.smartfinance.model.Transaction;
+
+import androidx.fragment.app.DialogFragment;
 
 public class TransactionDetailsFragment extends DialogFragment {
 
@@ -39,6 +40,7 @@ public class TransactionDetailsFragment extends DialogFragment {
 
         TextView dateView = (TextView) rootView.findViewById(R.id.transaction_dialog_date);
         TextView sumView = (TextView) rootView.findViewById(R.id.transaction_dialog_sum);
+        TextView locationView = (TextView) rootView.findViewById(R.id.transaction_dialog_location);
 
         Button returnButton = (Button) rootView.findViewById(R.id.transaction_dialog_return_button);
 
@@ -58,6 +60,8 @@ public class TransactionDetailsFragment extends DialogFragment {
         dateView.setText("Date: " + t.getDate().toString("dd MM/YYYY"));
 
         sumView.setText("Sum: " + t.getSum() + " $");
+
+        locationView.setText("Location: " + t.getLocation());
 
         returnButton.setOnClickListener(new View.OnClickListener() {
             @Override

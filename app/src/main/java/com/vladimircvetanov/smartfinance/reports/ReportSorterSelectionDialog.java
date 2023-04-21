@@ -1,11 +1,10 @@
 package com.vladimircvetanov.smartfinance.reports;
 
-import android.support.v4.app.DialogFragment;
-
 import com.vladimircvetanov.smartfinance.model.Transaction;
 
 import java.util.Comparator;
 
+import androidx.fragment.app.DialogFragment;
 
 
 public class ReportSorterSelectionDialog extends DialogFragment {

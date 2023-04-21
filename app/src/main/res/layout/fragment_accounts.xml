@@ -15,7 +15,7 @@
         android:background="@color/colorLightGreen"
         android:textColor="@color/colorDarkGreen"/>
 
-    <android.support.v7.widget.RecyclerView
+    <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/accounts_list"
         android:layout_below="@id/my_accounts_title"
         android:layout_width="match_parent"
@@ -33,7 +33,7 @@
         android:background="@color/colorLightGreen"
         android:textColor="@color/colorDarkGreen"/>
 
-    <android.support.v7.widget.RecyclerView
+    <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/accounts_icons_list"
         android:layout_below="@id/more_accounts_title"
         android:layout_width="match_parent"

@@ -1,12 +1,12 @@
 package com.vladimircvetanov.smartfinance.model;
 
-import android.support.annotation.NonNull;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+
+import androidx.annotation.NonNull;
 
 /**
  */

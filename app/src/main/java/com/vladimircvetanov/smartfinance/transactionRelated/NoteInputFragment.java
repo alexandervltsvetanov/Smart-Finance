@@ -2,8 +2,6 @@ package com.vladimircvetanov.smartfinance.transactionRelated;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
-import android.support.v4.app.DialogFragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,7 +10,10 @@ import android.widget.EditText;
 
 import com.vladimircvetanov.smartfinance.R;
 
-public class NoteInputFragment extends DialogFragment{
+import androidx.annotation.Nullable;
+import androidx.fragment.app.DialogFragment;
+
+public class NoteInputFragment extends DialogFragment {
 
     public interface NoteCommunicator{
         void setNote(String note);

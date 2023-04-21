@@ -2,9 +2,6 @@ package com.vladimircvetanov.smartfinance.reports;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.ContextCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,11 +12,16 @@ import android.widget.TextView;
 
 import com.vladimircvetanov.smartfinance.R;
 import com.vladimircvetanov.smartfinance.db.DBAdapter;
-import com.vladimircvetanov.smartfinance.message.Message;
 import com.vladimircvetanov.smartfinance.model.Category;
+import com.vladimircvetanov.smartfinance.model.CategoryExpense;
+import com.vladimircvetanov.smartfinance.model.CategoryIncome;
 import com.vladimircvetanov.smartfinance.model.Transaction;
 
 import java.util.ArrayList;
+
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
 
 public class ReportFragment extends Fragment {
 
@@ -157,17 +159,20 @@ public class ReportFragment extends Fragment {
             TextView t0 = (TextView) convertView.findViewById(R.id.report_item_title);
             t0.setText(trans.getAccount().getName());
 
-            TextView t1 = (TextView) convertView.findViewById(R.id.report_item_sum);
-            t1.setText("$" + trans.getSum());
+            TextView t1 = (TextView) convertView.findViewById(R.id.report_item_location);
+            t1.setText(trans.getLocation());
 
-            TextView t2 = (TextView) convertView.findViewById(R.id.report_item_date);
-            t2.setText(trans.getDate().toString("dd/MM/YY"));
+            TextView t2 = (TextView) convertView.findViewById(R.id.report_item_sum);
+            t2.setText("$" + trans.getSum());
+
+            TextView t3 = (TextView) convertView.findViewById(R.id.report_item_date);
+            t3.setText(trans.getDate().toString("dd/MM/YY"));
 
             convertView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     TransactionDetailsFragment fragment = TransactionDetailsFragment.newInstance(trans);
-                    fragment.show(getFragmentManager(),"TransactionDetails");
+                    fragment.show(getParentFragmentManager(),"TransactionDetails");
                 }
             });
 

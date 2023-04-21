@@ -1,8 +1,8 @@
 package com.vladimircvetanov.smartfinance.favourites;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.widget.RecyclerView;
+import android.graphics.drawable.Icon;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,6 +15,10 @@ import com.vladimircvetanov.smartfinance.message.Message;
 import com.vladimircvetanov.smartfinance.model.RowDisplayable;
 
 import java.util.ArrayList;
+import java.util.Collection;
+
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.RecyclerView;
 
 public class RowDisplayableAdapter extends RecyclerView.Adapter<RowDisplayableAdapter.IconViewHolder>{
 
@@ -22,6 +26,8 @@ public class RowDisplayableAdapter extends RecyclerView.Adapter<RowDisplayableAd
     private Context context;
 
     private DBAdapter adapter;
+
+    private IconViewHolder holder;
 
     RowDisplayableAdapter(ArrayList<RowDisplayable> favouriteCategories, Context context) {
         this.context = context;
@@ -38,11 +44,11 @@ public class RowDisplayableAdapter extends RecyclerView.Adapter<RowDisplayableAd
     }
 
     @Override
-    public void onBindViewHolder(final RowDisplayableAdapter.IconViewHolder holder, final int position) {
+    public void onBindViewHolder(final RowDisplayableAdapter.IconViewHolder holder, @SuppressLint("RecyclerView") final int position) {
         final RowDisplayable categoryExpense = categories.get(position);
         holder.image.setImageResource(categoryExpense.getIconId());
         holder.image.setBackground(ContextCompat.getDrawable(context, R.drawable.fav_icon_backgroud));
-
+        this.holder = holder;
         holder.image.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -72,9 +78,29 @@ public class RowDisplayableAdapter extends RecyclerView.Adapter<RowDisplayableAd
         });
     }
 
+    public IconViewHolder getHolder() {
+        return this.holder;
+    }
+
     @Override
     public int getItemCount() {
         return categories.size();
+    }
+
+    public void updateCategories(ArrayList<RowDisplayable> newCategories) {
+        categories.clear();
+        for(RowDisplayable cat : newCategories) {
+            categories.add(cat);
+        }
+        notifyDataSetChanged();
+    }
+
+    public void addCategory(RowDisplayable category) {
+        categories.add(category);
+    }
+
+    public void removeCategory(RowDisplayable category) {
+        categories.remove(category);
     }
 
     static class IconViewHolder extends RecyclerView.ViewHolder{

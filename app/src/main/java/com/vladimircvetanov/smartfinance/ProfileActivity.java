@@ -1,31 +1,18 @@
 package com.vladimircvetanov.smartfinance;
 
-import android.app.Activity;
-import android.content.ContentValues;
-import android.content.Intent;
-import android.database.Cursor;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.net.Uri;
-import android.provider.MediaStore;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import com.vladimircvetanov.smartfinance.db.DBAdapter;
 import com.vladimircvetanov.smartfinance.message.Message;
 import com.vladimircvetanov.smartfinance.model.Manager;
-import com.vladimircvetanov.smartfinance.model.User;
 
-import java.io.IOException;
+import androidx.appcompat.app.AppCompatActivity;
 
 public class ProfileActivity extends AppCompatActivity {
-
-
     private ImageView userPic;
     private EditText changeEmail;
     private EditText changePass;
@@ -72,7 +59,7 @@ public class ProfileActivity extends AppCompatActivity {
                     changeEmail.requestFocus();
                   return ;
                 }
-                //if(!android.util.Patterns.EMAIL_ADDRESS.matcher(username).matches()){
+
                 if (!newEmail.matches("^(.+)@(.+)$")) {
                     changeEmail.setError("enter a valid email address");
                     changeEmail.setText("");
@@ -99,14 +86,9 @@ public class ProfileActivity extends AppCompatActivity {
                 Manager.getLoggedUser().setEmail(newEmail);
                 Manager.getLoggedUser().setPassword(newPass);
                 finish();
-
             }
         });
     }
-
-
-
-
 }
 
 

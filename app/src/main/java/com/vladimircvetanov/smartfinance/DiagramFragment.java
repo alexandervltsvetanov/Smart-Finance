@@ -3,10 +3,6 @@ package com.vladimircvetanov.smartfinance;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.graphics.Palette;
 import android.view.InflateException;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -43,6 +39,11 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.palette.graphics.Palette;
+
 public class DiagramFragment extends Fragment {
 
     private HashSet<CategoryExpense> displayedCategories;
@@ -62,15 +63,11 @@ public class DiagramFragment extends Fragment {
     private Bundle args;
 
     @Override
-    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         if (savedInstanceState != null) {
             entries = savedInstanceState.getParcelableArrayList("entriesList");
         }
-    }
 
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         try {
             rootView = inflater.inflate(R.layout.fragment_diagram, container, false);
         } catch (InflateException e) {}
@@ -215,7 +212,7 @@ public class DiagramFragment extends Fragment {
                         Bundle arguments = new Bundle();
                         arguments.putSerializable(getString(R.string.EXTRA_SECTION), categoryExpense);
                         fragment.setArguments(arguments);
-                        getFragmentManager().beginTransaction()
+                        getParentFragmentManager().beginTransaction()
                                 .replace(R.id.main_fragment_frame, fragment, getString(R.string.transaction_fragment_tag))
                                 .addToBackStack(getString(R.string.transaction_fragment_tag))
                                 .commit();

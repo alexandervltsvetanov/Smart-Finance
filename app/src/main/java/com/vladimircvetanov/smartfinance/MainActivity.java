@@ -1,17 +1,14 @@
 package com.vladimircvetanov.smartfinance;
 
+import android.Manifest;
 import android.app.DatePickerDialog;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationRequest;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.design.widget.NavigationView;
-import android.support.v4.app.DialogFragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v4.view.GravityCompat;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -20,17 +17,43 @@ import android.widget.DatePicker;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.CancellationToken;
+import com.google.android.gms.tasks.CancellationTokenSource;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.android.material.navigation.NavigationView;
 import com.vladimircvetanov.smartfinance.accounts.AccountsFragment;
 import com.vladimircvetanov.smartfinance.date.DatePickerFragment;
 import com.vladimircvetanov.smartfinance.favourites.FavouritesFragment;
+import com.vladimircvetanov.smartfinance.favourites.IUpdateData;
 import com.vladimircvetanov.smartfinance.model.Category;
 import com.vladimircvetanov.smartfinance.model.Manager;
+import com.vladimircvetanov.smartfinance.model.RowDisplayable;
+import com.vladimircvetanov.smartfinance.transactionRelated.ItemType;
 import com.vladimircvetanov.smartfinance.transactionRelated.NoteInputFragment;
 import com.vladimircvetanov.smartfinance.transactionRelated.TransactionFragment;
 
 import org.joda.time.DateTime;
 
-public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, DatePickerDialog.OnDateSetListener, NoteInputFragment.NoteCommunicator {
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+
+public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener, DatePickerDialog.OnDateSetListener, NoteInputFragment.NoteCommunicator, IUpdateData,
+        TransactionFragment.LocationCommunicator {
 
     private Toolbar toolbar;
     private DrawerLayout drawer;
@@ -40,6 +63,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private TextView userProfile;
     private View headerView;
     private View toolbarTitle;
+
+    private FusedLocationProviderClient fusedLocationProviderClient;
+
+    private String currentLocation;
 
     private FragmentManager fragmentManager;
 
@@ -51,6 +78,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         toolbar = (Toolbar) findViewById(R.id.app_bar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
+
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+
+        requestLocation();
 
         drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         toggle = new ActionBarDrawerToggle(this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
@@ -90,6 +121,32 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         .commit();
             }
         });
+    }
+
+    private void requestLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            CancellationTokenSource token = new CancellationTokenSource();
+            fusedLocationProviderClient.getCurrentLocation(LocationRequest.QUALITY_HIGH_ACCURACY, token.getToken()).addOnCompleteListener(new OnCompleteListener<Location>() {
+                @Override
+                public void onComplete(@NonNull Task<Location> task) {
+                    Location location = task.getResult();
+                    if (location != null) {
+                        try {
+                            Geocoder geocoder = new Geocoder(MainActivity.this, Locale.getDefault());
+                            List<Address> addresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+                            currentLocation = addresses.get(0).getLocality();
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else {
+                        currentLocation = "No location";
+                    }
+                }
+            });
+        } else {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 44);
+            currentLocation = "No location";
+        }
     }
 
     @Override
@@ -181,5 +238,28 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public void setNote(String note) {
         TransactionFragment t = (TransactionFragment) getSupportFragmentManager().findFragmentByTag(getString(R.string.transaction_fragment_tag));
         t.setNote(note);
+    }
+
+    @Override
+    public void sendData(RowDisplayable item, ItemType type, Boolean delete) {
+        IFragment frag;
+        switch (type) {
+            case ACCOUNT:
+                frag = (AccountsFragment) fragmentManager.findFragmentByTag(getString(R.string.accounts_fragment_tag));
+                break;
+            case FAVOURITECATEGORY:
+                frag = (FavouritesFragment) fragmentManager.findFragmentByTag(getString(R.string.favourites_fragment_tag));
+                break;
+            default:
+                frag = (FavouritesFragment) fragmentManager.findFragmentByTag(getString(R.string.favourites_fragment_tag));
+                break;
+        }
+
+        frag.updateData(item, type, delete);
+    }
+
+    @Override
+    public String getLocation() {
+        return currentLocation;
     }
 }

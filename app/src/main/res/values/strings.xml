@@ -90,6 +90,7 @@
     <string name="transaction_input_note">add note ...</string>
     <string name="title_activity_navigation">NavigationActivity</string>
     <string name="test_text">TEST_TEXT</string>
+    <string name="test_location">TEST_LOC</string>
     <string name="note_fragment_tag">Note_input_Fragment</string>
     <string name="account_name">Account name</string>
     <string name="acount_value">0.00</string>

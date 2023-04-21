@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.util.HashSet;
 
 public class User implements Serializable {
-
     private String email;
     private String password;
     private long id;
@@ -22,9 +21,6 @@ public class User implements Serializable {
         }
         totalSum = 0f;
         accounts = new HashSet<>();
-
-
-
     }
 
     public String getEmail() {
@@ -54,6 +50,4 @@ public class User implements Serializable {
     public long getId() {
         return id;
     }
-
-
 }
